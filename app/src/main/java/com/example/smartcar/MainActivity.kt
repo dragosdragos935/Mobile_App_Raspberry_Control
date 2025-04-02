@@ -22,15 +22,19 @@ class MainActivity : AppCompatActivity() {
     private var rpm = 0
     private var temperature = 25
     private var battery = 100
+    private var currentSpeed = 0
+    private val maxSpeed = 100
+    private val minSpeed = 0
+    private val speedIncrement = 10
 
     // Runnable pentru simularea parametrilor
     private val parameterSimulator = object : Runnable {
         override fun run() {
             if (isMoving) {
-                // Simulare RPM bazată pe direcție
+                // Simulare RPM bazată pe direcție și viteză
                 rpm = when (currentDirection) {
-                    "FORWARD", "BACKWARD" -> Random.nextInt(800, 1200)
-                    "LEFT", "RIGHT" -> Random.nextInt(400, 800)
+                    "FORWARD", "BACKWARD" -> (800 + (currentSpeed * 4)).coerceAtMost(1200)
+                    "LEFT", "RIGHT" -> (400 + (currentSpeed * 2)).coerceAtMost(800)
                     else -> 0
                 }
 
@@ -58,6 +62,7 @@ class MainActivity : AppCompatActivity() {
 
         setupModeToggle()
         setupControlButtons()
+        setupPedalButtons()
         startParameterSimulation()
     }
 
@@ -112,6 +117,23 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun setupPedalButtons() {
+        val accelerateButton = findViewById<MaterialButton>(R.id.accelerateButton)
+        val brakeButton = findViewById<MaterialButton>(R.id.brakeButton)
+
+        accelerateButton.setOnClickListener {
+            if (isManualMode) {
+                accelerate()
+            }
+        }
+
+        brakeButton.setOnClickListener {
+            if (isManualMode) {
+                brake()
+            }
+        }
+    }
+
     private fun moveCar(direction: String) {
         currentDirection = direction
         isMoving = true
@@ -135,6 +157,20 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }, 1000)
+    }
+
+    private fun accelerate() {
+        if (currentSpeed < maxSpeed) {
+            currentSpeed = (currentSpeed + speedIncrement).coerceAtMost(maxSpeed)
+            logToConsole("Speed increased to: $currentSpeed%")
+        }
+    }
+
+    private fun brake() {
+        if (currentSpeed > minSpeed) {
+            currentSpeed = (currentSpeed - speedIncrement).coerceAtLeast(minSpeed)
+            logToConsole("Speed decreased to: $currentSpeed%")
+        }
     }
 
     private fun startParameterSimulation() {
