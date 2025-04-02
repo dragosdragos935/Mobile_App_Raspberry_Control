@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Smart Car Control</string>
+    <string name="manual_mode">Manual Mode</string>
+    <string name="automatic_mode">Automatic Mode</string>
+    <string name="vehicle_status">Vehicle Status</string>
+    <string name="command_console">Command Console</string>
+    <string name="connected">Connected</string>
+    <string name="disconnected">Disconnected</string>
+</resources>
