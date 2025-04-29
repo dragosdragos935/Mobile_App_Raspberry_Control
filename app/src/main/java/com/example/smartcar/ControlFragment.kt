@@ -12,6 +12,9 @@ import com.google.android.material.button.MaterialButton
 import com.google.android.material.button.MaterialButtonToggleGroup
 import kotlin.random.Random
 
+// Redenumim importul pentru a evita conflictul
+import com.example.smartcar.BluetoothManager as SmartCarBluetoothManager
+
 class ControlFragment : Fragment() {
     private var isManualMode = true
     private val dateFormat = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault())
@@ -26,6 +29,7 @@ class ControlFragment : Fragment() {
     private val maxSpeed = 100
     private val minSpeed = 0
     private val speedIncrement = 10
+    private lateinit var bluetoothManager: SmartCarBluetoothManager
 
     private val parameterSimulator = object : Runnable {
         override fun run() {
@@ -65,11 +69,27 @@ class ControlFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        
+        // Inițializăm referința către BluetoothManager
+        bluetoothManager = (activity as MainActivity).bluetoothManager
 
         setupModeToggle(view)
         setupControlButtons(view)
         setupPedalButtons(view)
         startParameterSimulation()
+        updateConnectionStatus(view)
+    }
+
+    private fun updateConnectionStatus(view: View) {
+        val connectionStatusText = view.findViewById<TextView>(R.id.connectionStatusText)
+        
+        if (bluetoothManager.isConnected) {
+            connectionStatusText.text = "Connected to Arduino"
+            connectionStatusText.setTextColor(resources.getColor(android.R.color.holo_green_dark, null))
+        } else {
+            connectionStatusText.text = "Disconnected"
+            connectionStatusText.setTextColor(resources.getColor(android.R.color.holo_red_dark, null))
+        }
     }
 
     private fun setupModeToggle(view: View) {
@@ -101,24 +121,28 @@ class ControlFragment : Fragment() {
         forwardButton.setOnClickListener {
             if (isManualMode) {
                 moveCar("FORWARD")
+                bluetoothManager.sendCommand('w')
             }
         }
 
         backwardButton.setOnClickListener {
             if (isManualMode) {
                 moveCar("BACKWARD")
+                bluetoothManager.sendCommand('s')
             }
         }
 
         leftButton.setOnClickListener {
             if (isManualMode) {
                 moveCar("LEFT")
+                bluetoothManager.sendCommand('a')
             }
         }
 
         rightButton.setOnClickListener {
             if (isManualMode) {
                 moveCar("RIGHT")
+                bluetoothManager.sendCommand('d')
             }
         }
     }
@@ -136,19 +160,35 @@ class ControlFragment : Fragment() {
         brakeButton.setOnClickListener {
             if (isManualMode) {
                 brake()
+                stopMovement()
             }
         }
     }
 
     private fun moveCar(direction: String) {
+        if (!bluetoothManager.isConnected) {
+            logToConsole("Cannot move: Not connected to Arduino")
+            return
+        }
+        
         currentDirection = direction
         isMoving = true
         logToConsole("Moving $direction")
+        bluetoothManager.sendCommand(
+            when (direction) {
+                "FORWARD" -> 'w'
+                "BACKWARD" -> 's'
+                "LEFT" -> 'a'
+                "RIGHT" -> 'd'
+                else -> ' '
+            }
+        )
     }
 
     private fun stopMovement() {
         isMoving = false
         currentDirection = "STOP"
+        bluetoothManager.sendCommand(' ')
         logToConsole("Stopped")
     }
 
@@ -156,10 +196,14 @@ class ControlFragment : Fragment() {
         handler.postDelayed(object : Runnable {
             override fun run() {
                 if (!isManualMode) {
-                    val directions = listOf("FORWARD", "LEFT", "RIGHT", "BACKWARD")
-                    val randomDirection = directions.random()
-                    moveCar(randomDirection)
-                    handler.postDelayed(this, Random.nextLong(2000, 5000))
+                    if (bluetoothManager.isConnected) {
+                        val directions = listOf("FORWARD", "LEFT", "RIGHT", "BACKWARD")
+                        val randomDirection = directions.random()
+                        moveCar(randomDirection)
+                        handler.postDelayed(this, Random.nextLong(2000, 5000))
+                    } else {
+                        logToConsole("Cannot start automatic mode: Not connected to Arduino")
+                    }
                 }
             }
         }, 1000)
